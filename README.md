@@ -1,4 +1,4 @@
-# 🗡️ Hunter System
+# Hunter System
 
 > *"Arise."*
 
