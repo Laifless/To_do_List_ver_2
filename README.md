@@ -159,29 +159,6 @@ flutter pub get
 flutter run
 ```
 
-### Configurazione `android/app/build.gradle.kts`
-
-Il plugin `flutter_local_notifications` richiede il desugaring Java 8. Il file deve contenere:
-
-```kotlin
-android {
-    compileOptions {
-        isCoreLibraryDesugaringEnabled = true
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
-    }
-    kotlinOptions {
-        jvmTarget = "11"
-    }
-}
-
-dependencies {
-    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
-}
-```
-
----
-
 
 
 ## Dipendenze
