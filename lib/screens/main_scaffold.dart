@@ -8,7 +8,6 @@ import '../core/haptics.dart';
 import '../models/hunter_rank.dart';
 import '../models/quest.dart';
 import '../providers/system_provider.dart';
-import '../widgets/boot_screen.dart';
 import '../widgets/glow_fab.dart';
 import '../widgets/level_up_overlay.dart';
 import '../widgets/slide_route.dart';
@@ -28,25 +27,13 @@ class _MainScaffoldState extends State<MainScaffold> {
   int _index = 0;
   StreamSubscription<int>? _levelUpSub;
   HunterRank? _lastRank;
-  bool _subscribed = false;
 
   @override
   void initState() {
     super.initState();
-    // La sottoscrizione avviene dopo il primo build, quando il provider
-    // è sicuramente nell'albero e il loading potrebbe già essere finito.
-    WidgetsBinding.instance.addPostFrameCallback((_) => _trySubscribe());
-  }
-
-  void _trySubscribe() {
-    if (_subscribed || !mounted) return;
+    // MainScaffold viene costruito SOLO dopo che AppRoot ha verificato
+    // isLoading == false, quindi qui il provider è già pronto.
     final prov = context.read<SystemProvider>();
-    if (prov.isLoading) {
-      // Non ancora pronto — riprova al prossimo frame.
-      WidgetsBinding.instance.addPostFrameCallback((_) => _trySubscribe());
-      return;
-    }
-    _subscribed = true;
     _lastRank = prov.rank;
     _levelUpSub = prov.levelUpEvents.listen(_handleLevelUp);
   }
@@ -72,76 +59,61 @@ class _MainScaffoldState extends State<MainScaffold> {
 
   @override
   Widget build(BuildContext context) {
-    // Consumer isola il rebuild del BootScreen → evita il crash
-    // '_dependents.isEmpty is not true' che si verifica quando il provider
-    // notifica il passaggio isLoading=true→false mentre BootScreen e Scaffold
-    // condividono lo stesso BuildContext.
-    return Consumer<SystemProvider>(
-      builder: (ctx, prov, _) {
-        if (prov.isLoading) return const BootScreen();
-
-        // Primo frame dopo il loading: sottoscriviamo se non ancora fatto.
-        if (!_subscribed) {
-          WidgetsBinding.instance.addPostFrameCallback((_) => _trySubscribe());
-        }
-
-        return Scaffold(
-          body: IndexedStack(
-            index: _index,
-            children: const [
-              QuestLogScreen(),
-              DungeonKeysScreen(),
-              StatusScreen(),
-            ],
+    return Scaffold(
+      body: IndexedStack(
+        index: _index,
+        children: const [
+          QuestLogScreen(),
+          DungeonKeysScreen(),
+          StatusScreen(),
+        ],
+      ),
+      bottomNavigationBar: Container(
+        decoration: const BoxDecoration(
+          border: Border(
+            top: BorderSide(color: AppColors.blueDim, width: 1),
           ),
-          bottomNavigationBar: Container(
-            decoration: const BoxDecoration(
-              border: Border(
-                top: BorderSide(color: AppColors.blueDim, width: 1),
-              ),
-            ),
-            child: BottomNavigationBar(
-              backgroundColor: AppColors.surfaceAlt,
-              selectedItemColor: AppColors.blue,
-              unselectedItemColor: Colors.grey[700],
-              currentIndex: _index,
-              onTap: (i) {
-                SystemFeedback.tap();
-                setState(() => _index = i);
-              },
-              selectedLabelStyle: const TextStyle(
-                fontFamily: 'monospace',
-                fontSize: 10,
-                letterSpacing: 1,
-              ),
-              unselectedLabelStyle: const TextStyle(
-                fontFamily: 'monospace',
-                fontSize: 10,
-              ),
-              items: const [
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.list_alt_outlined),
-                  activeIcon: Icon(Icons.list_alt),
-                  label: 'QUESTS',
-                ),
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.fitness_center_outlined),
-                  activeIcon: Icon(Icons.fitness_center),
-                  label: 'DUNGEON',
-                ),
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.person_outline),
-                  activeIcon: Icon(Icons.person),
-                  label: 'STATUS',
-                ),
-              ],
-            ),
+        ),
+        child: BottomNavigationBar(
+          backgroundColor: AppColors.surfaceAlt,
+          selectedItemColor: AppColors.blue,
+          unselectedItemColor: Colors.grey[700],
+          currentIndex: _index,
+          onTap: (i) {
+            SystemFeedback.tap();
+            setState(() => _index = i);
+          },
+          selectedLabelStyle: const TextStyle(
+            fontFamily: 'monospace',
+            fontSize: 10,
+            letterSpacing: 1,
           ),
-          floatingActionButton: _index != 2
-              ? GlowFAB(onPressed: () => _showAddMenu(context))
-              : null,
-        );
-      },
+          unselectedLabelStyle: const TextStyle(
+            fontFamily: 'monospace',
+            fontSize: 10,
+          ),
+          items: const [
+            BottomNavigationBarItem(
+              icon: Icon(Icons.list_alt_outlined),
+              activeIcon: Icon(Icons.list_alt),
+              label: 'QUESTS',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.fitness_center_outlined),
+              activeIcon: Icon(Icons.fitness_center),
+              label: 'DUNGEON',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.person_outline),
+              activeIcon: Icon(Icons.person),
+              label: 'STATUS',
+            ),
+          ],
+        ),
+      ),
+      floatingActionButton: _index != 2
+          ? GlowFAB(onPressed: () => _showAddMenu(context))
+          : null,
     );
   }
 
