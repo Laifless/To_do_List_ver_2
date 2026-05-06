@@ -197,11 +197,7 @@ Sostituito ovunque con `AppColors.alpha(color, opacity)` che usa `withValues(alp
 **7. `mounted` check mancante dopo `await`**
 Aggiunti tutti i check `if (!mounted) return` dopo operazioni asincrone per evitare crash su widget smontati.
 
----
 
-## Bug attuali
-
-Crusha con la creazione dei dungeon
 
 ---
 
