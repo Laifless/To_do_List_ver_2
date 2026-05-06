@@ -124,19 +124,17 @@ class _DungeonMakerScreenState extends State<DungeonMakerScreen> {
                     height: 20,
                     decoration: BoxDecoration(
                       border: Border.all(
-                        color:
-                            isSelected ? AppColors.purple : AppColors.blueDim,
+                        color: isSelected
+                            ? AppColors.purple
+                            : AppColors.blueDim,
                       ),
                       color: isSelected
                           ? AppColors.alpha(AppColors.purple, 0.2)
                           : Colors.transparent,
                     ),
                     child: isSelected
-                        ? const Icon(
-                            Icons.check,
-                            size: 14,
-                            color: AppColors.purple,
-                          )
+                        ? const Icon(Icons.check,
+                            size: 14, color: AppColors.purple)
                         : null,
                   ),
                   title: Text(
@@ -152,11 +150,8 @@ class _DungeonMakerScreenState extends State<DungeonMakerScreen> {
                   ),
                   trailing: ex.isCustom
                       ? IconButton(
-                          icon: const Icon(
-                            Icons.delete_outline,
-                            color: AppColors.red,
-                            size: 16,
-                          ),
+                          icon: const Icon(Icons.delete_outline,
+                              color: AppColors.red, size: 16),
                           onPressed: () => prov.deleteCustomExercise(ex),
                         )
                       : null,
@@ -189,9 +184,7 @@ class _DungeonMakerScreenState extends State<DungeonMakerScreen> {
                     children: _selected.map((t) {
                       return Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 3,
-                        ),
+                            horizontal: 8, vertical: 3),
                         decoration: BoxDecoration(
                           border: Border.all(
                             color: AppColors.alpha(AppColors.purple, 0.5),
@@ -218,11 +211,7 @@ class _DungeonMakerScreenState extends State<DungeonMakerScreen> {
               children: [
                 Expanded(
                   child: OutlinedButton.icon(
-                    icon: const Icon(
-                      Icons.add,
-                      color: AppColors.blue,
-                      size: 16,
-                    ),
+                    icon: const Icon(Icons.add, color: AppColors.blue, size: 16),
                     label: const Text(
                       'CUSTOM',
                       style: TextStyle(
@@ -267,84 +256,32 @@ class _DungeonMakerScreenState extends State<DungeonMakerScreen> {
     );
   }
 
-  void _toggleExercise(ExerciseBlueprint ex) {
+  Future<void> _toggleExercise(ExerciseBlueprint ex) async {
+    // Se già selezionato → deseleziona
     if (_selected.any((t) => t.exerciseId == ex.id)) {
       setState(() => _selected.removeWhere((t) => t.exerciseId == ex.id));
       return;
     }
 
-    final setsCtrl = TextEditingController(text: '4');
-    // Cattura il context del widget PRIMA di entrare nel builder del dialog.
-    // Usare `ctx` (il context del builder) per setState sul padre non funziona
-    // in modo affidabile — il widget padre è fuori dall'albero del dialog.
-    final widgetContext = context;
+    // Apre il dialog e aspetta il risultato con await —
+    // più affidabile di .then() su Android.
+    final sets = await showDialog<int>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => _SetsDialog(exerciseName: ex.name),
+    );
 
-    showDialog<int?>(
-      context: widgetContext,
-      builder: (ctx) => AlertDialog(
-        title: Text(
-          ex.name,
-          style: const TextStyle(
-            color: AppColors.purple,
-            fontFamily: 'monospace',
-            fontSize: 14,
-          ),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              'Serie target:',
-              style: TextStyle(color: Colors.grey),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: setsCtrl,
-              keyboardType: TextInputType.number,
-              textAlign: TextAlign.center,
-              autofocus: true,
-              style: const TextStyle(
-                color: AppColors.purple,
-                fontSize: 28,
-                fontFamily: 'monospace',
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.purple,
-              shape: const RoundedRectangleBorder(),
-            ),
-            // Restituisce il numero di serie come risultato del dialog,
-            // invece di chiamare setState dall'interno del builder.
-            onPressed: () {
-              final s = int.tryParse(setsCtrl.text) ?? 4;
-              Navigator.pop(ctx, s);
-            },
-            child: const Text(
-              'AGGIUNGI',
-              style: TextStyle(color: Colors.white),
-            ),
-          ),
-        ],
-      ),
-    ).then((sets) {
-      setsCtrl.dispose();
-      if (sets == null) return; // dialog chiuso senza conferma
-      if (!mounted) return;
-      setState(() {
-        _selected.add(
-          GymTask(
-            id: 'task_${DateTime.now().millisecondsSinceEpoch}',
-            exerciseId: ex.id,
-            name: ex.name,
-            targetMuscle: ex.muscleGroup,
-            targetSets: sets,
-          ),
-        );
-      });
+    if (sets == null) return;   // utente ha annullato
+    if (!mounted) return;
+
+    setState(() {
+      _selected.add(GymTask(
+        id: 'task_${DateTime.now().millisecondsSinceEpoch}',
+        exerciseId: ex.id,
+        name: ex.name,
+        targetMuscle: ex.muscleGroup,
+        targetSets: sets,
+      ));
     });
   }
 
@@ -375,7 +312,8 @@ class _DungeonMakerScreenState extends State<DungeonMakerScreen> {
             TextField(
               controller: muscleCtrl,
               style: const TextStyle(color: Colors.white),
-              decoration: const InputDecoration(labelText: 'Gruppo muscolare'),
+              decoration:
+                  const InputDecoration(labelText: 'Gruppo muscolare'),
             ),
           ],
         ),
@@ -394,10 +332,7 @@ class _DungeonMakerScreenState extends State<DungeonMakerScreen> {
                 Navigator.pop(dialogCtx);
               }
             },
-            child: const Text(
-              'SAVE',
-              style: TextStyle(color: Colors.black),
-            ),
+            child: const Text('SAVE', style: TextStyle(color: Colors.black)),
           ),
         ],
       ),
@@ -405,16 +340,144 @@ class _DungeonMakerScreenState extends State<DungeonMakerScreen> {
   }
 
   void _save() {
-    if (_nameCtrl.text.isEmpty || _selected.isEmpty) return;
+    if (_nameCtrl.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('⚠ Inserisci un nome per la scheda')),
+      );
+      return;
+    }
+    if (_selected.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('⚠ Seleziona almeno un esercizio')),
+      );
+      return;
+    }
+
     SystemFeedback.confirm();
     context.read<SystemProvider>().addQuest(
           Quest(
             id: 'gym_${DateTime.now().millisecondsSinceEpoch}',
-            title: _nameCtrl.text,
+            title: _nameCtrl.text.trim(),
             type: QuestType.gym,
-            gymRoutine: _selected,
+            gymRoutine: List.from(_selected),
           ),
         );
     Navigator.pop(context);
+  }
+}
+
+/// Dialog dedicato per scegliere il numero di serie.
+/// Essere un StatefulWidget separato evita qualsiasi problema di context
+/// o rebuild che affliggeva il dialog inline con autofocus su Android.
+class _SetsDialog extends StatefulWidget {
+  final String exerciseName;
+  const _SetsDialog({required this.exerciseName});
+
+  @override
+  State<_SetsDialog> createState() => _SetsDialogState();
+}
+
+class _SetsDialogState extends State<_SetsDialog> {
+  int _sets = 4;
+
+  void _increment() => setState(() => _sets = (_sets + 1).clamp(1, 20));
+  void _decrement() => setState(() => _sets = (_sets - 1).clamp(1, 20));
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(
+        widget.exerciseName,
+        style: const TextStyle(
+          color: AppColors.purple,
+          fontFamily: 'monospace',
+          fontSize: 14,
+        ),
+      ),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text(
+            'Serie target:',
+            style: TextStyle(color: Colors.grey, fontFamily: 'monospace'),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // Bottone −
+              GestureDetector(
+                onTap: _decrement,
+                child: Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    border: Border.all(color: AppColors.blueDim),
+                    color: AppColors.alpha(AppColors.blue, 0.05),
+                  ),
+                  child: const Icon(Icons.remove,
+                      color: AppColors.blue, size: 20),
+                ),
+              ),
+              // Numero centrale
+              Container(
+                width: 80,
+                height: 44,
+                margin: const EdgeInsets.symmetric(horizontal: 8),
+                decoration: BoxDecoration(
+                  border: Border.all(color: AppColors.purple),
+                  color: AppColors.alpha(AppColors.purple, 0.08),
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  '$_sets',
+                  style: const TextStyle(
+                    color: AppColors.purple,
+                    fontSize: 28,
+                    fontFamily: 'monospace',
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              // Bottone +
+              GestureDetector(
+                onTap: _increment,
+                child: Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    border: Border.all(color: AppColors.blueDim),
+                    color: AppColors.alpha(AppColors.blue, 0.05),
+                  ),
+                  child: const Icon(Icons.add,
+                      color: AppColors.blue, size: 20),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, null),
+          child: const Text('ANNULLA',
+              style: TextStyle(color: Colors.grey, fontFamily: 'monospace')),
+        ),
+        ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.purple,
+            shape: const RoundedRectangleBorder(),
+          ),
+          onPressed: () => Navigator.pop(context, _sets),
+          child: const Text(
+            'AGGIUNGI',
+            style: TextStyle(
+                color: Colors.white,
+                fontFamily: 'monospace',
+                fontWeight: FontWeight.bold),
+          ),
+        ),
+      ],
+    );
   }
 }
