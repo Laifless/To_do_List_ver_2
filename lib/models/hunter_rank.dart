@@ -1,19 +1,14 @@
 import 'package:flutter/material.dart';
 import '../core/colors.dart';
 
-// ─────────────────────────────────────────────
-// RANK DEL HUNTER (E → SSS)
-// Due istanze indipendenti: una per le Quest, una per i Dungeon.
-// ─────────────────────────────────────────────
-
 enum HunterRank {
-  e(minLevel: 1,  label: 'E',   title: 'WEAKEST HUNTER',   color: AppColors.rankE),
-  d(minLevel: 5,  label: 'D',   title: 'AWAKENED',          color: AppColors.rankD),
-  c(minLevel: 10, label: 'C',   title: 'COMPETENT',         color: AppColors.rankC),
-  b(minLevel: 20, label: 'B',   title: 'ELITE HUNTER',      color: AppColors.rankB),
-  a(minLevel: 35, label: 'A',   title: 'NATIONAL ASSET',    color: AppColors.rankA),
-  s(minLevel: 60, label: 'S',   title: 'SHADOW MONARCH',    color: AppColors.rankS),
-  ss(minLevel: 90,  label: 'SS',  title: 'ABSOLUTE BEING',  color: AppColors.rankSS),
+  e(minLevel: 1,   label: 'E',   title: 'WEAKEST HUNTER',   color: AppColors.rankE),
+  d(minLevel: 5,   label: 'D',   title: 'AWAKENED',          color: AppColors.rankD),
+  c(minLevel: 10,  label: 'C',   title: 'COMPETENT',         color: AppColors.rankC),
+  b(minLevel: 20,  label: 'B',   title: 'ELITE HUNTER',      color: AppColors.rankB),
+  a(minLevel: 35,  label: 'A',   title: 'NATIONAL ASSET',    color: AppColors.rankA),
+  s(minLevel: 60,  label: 'S',   title: 'SHADOW MONARCH',    color: AppColors.rankS),
+  ss(minLevel: 90,  label: 'SS',  title: 'ABSOLUTE BEING',   color: AppColors.rankSS),
   ssPlus(minLevel: 120, label: 'SS+', title: 'BEYOND LIMIT', color: AppColors.rankSSPlus),
   sss(minLevel: 150, label: 'SSS', title: 'RULER OF RULERS', color: AppColors.rankSSS);
 
@@ -44,19 +39,12 @@ enum HunterRank {
   }
 }
 
-// ─────────────────────────────────────────────
-// SISTEMA XP DOPPIO
-// QuestLevel  → daily + adventure completate
-// DungeonLevel → dungeon completati + volume sollevato
-// ─────────────────────────────────────────────
-
 class LevelSystem {
   LevelSystem._();
 
-  // XP per tipo di azione
   static const int xpPerQuest   = 50;
   static const int xpPerDungeon = 300;
-  static const int xpPerVolume  = 1; // ogni 10 kg
+  static const int xpPerVolume  = 1;
 
   static int questXp({required int completedQuests}) =>
       completedQuests * xpPerQuest;
@@ -67,8 +55,6 @@ class LevelSystem {
   }) =>
       clearedDungeons * xpPerDungeon + (totalVolumeKg ~/ 10) * xpPerVolume;
 
-  /// XP totali necessari per arrivare AL livello [level] (cumulativo).
-  /// Curva: 100 × N × 1.2^(N-1)  — cresce ma non brutalmente.
   static int xpRequiredForLevel(int level) {
     if (level <= 1) return 0;
     int total = 0;
@@ -88,7 +74,7 @@ class LevelSystem {
   }
 
   static double progressInLevel(int xp) {
-    final lvl = levelFromXp(xp);
+    final lvl   = levelFromXp(xp);
     final start = xpRequiredForLevel(lvl);
     final end   = xpRequiredForLevel(lvl + 1);
     final span  = end - start;
@@ -110,24 +96,41 @@ class LevelSystem {
   }
 }
 
-// ─────────────────────────────────────────────
-// TIER MUSCOLARE
-// Basato sul volume cumulativo (kg × reps) per ogni gruppo muscolare.
-// ─────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// MUSCLE TIER SYSTEM
+//
+// Le soglie sono calibrate su volume reale (peso × reps cumulativo nel tempo).
+//
+// Riferimento: sessione tipica = 4 serie × 10 reps × 60kg = 2.400 kg/muscolo
+//   - 1 sessione  ≈    2.400 kg
+//   - 1 settimana ≈    5.000 kg  (2 sessioni)
+//   - 1 mese      ≈   20.000 kg
+//   - 3 mesi      ≈   60.000 kg
+//   - 6 mesi      ≈  120.000 kg
+//   - 1 anno      ≈  240.000 kg
+//   - 2 anni      ≈  480.000 kg
+//   - 3 anni      ≈  700.000 kg
+//   - 5 anni      ≈ 1.200.000 kg
+//   - 8 anni      ≈ 1.900.000 kg
+//   - 10+ anni    ≈ 2.400.000 kg
+//
+// Bronze = raggiungibile nella prima sessione (motivante da subito).
+// Titan  = traguardo da atleta di lungo corso.
+// ─────────────────────────────────────────────────────────────────────────────
 
 enum MuscleTier {
-  unranked(minVolume: 0,      label: '—',          color: Color(0xFF222233)),
-  bronze(  minVolume: 500,    label: 'BRONZE',     color: Color(0xFFCD7F32)),
-  silver(  minVolume: 2000,   label: 'SILVER',     color: Color(0xFFC0C0C0)),
-  gold(    minVolume: 5000,   label: 'GOLD',       color: Color(0xFFFFD700)),
-  platinum(minVolume: 10000,  label: 'PLATINUM',   color: Color(0xFFE5E4E2)),
-  diamond( minVolume: 20000,  label: 'DIAMOND',    color: Color(0xFF9FE2FF)),
-  ruby(    minVolume: 35000,  label: 'RUBY',       color: Color(0xFF9B111E)),
-  crystal( minVolume: 55000,  label: 'CRYSTAL',    color: Color(0xFFAA88FF)),
-  elite(   minVolume: 80000,  label: 'ELITE',      color: Color(0xFF00FFC8)),
-  champion(minVolume: 120000, label: 'CHAMPION',   color: Color(0xFFFF8C00)),
-  celestial(minVolume:175000, label: 'CELESTIAL',  color: Color(0xFF00EAFF)),
-  titan(   minVolume: 250000, label: 'TITAN',      color: Color(0xFFFF3A5C));
+  unranked(  minVolume: 0,          label: '—',          color: Color(0xFF222233)),
+  bronze(    minVolume: 1000,       label: 'BRONZE',     color: Color(0xFFCD7F32)),
+  silver(    minVolume: 5000,       label: 'SILVER',     color: Color(0xFFC0C0C0)),
+  gold(      minVolume: 20000,      label: 'GOLD',       color: Color(0xFFFFD700)),
+  platinum(  minVolume: 60000,      label: 'PLATINUM',   color: Color(0xFFE5E4E2)),
+  diamond(   minVolume: 120000,     label: 'DIAMOND',    color: Color(0xFF9FE2FF)),
+  ruby(      minVolume: 240000,     label: 'RUBY',       color: Color(0xFF9B111E)),
+  crystal(   minVolume: 480000,     label: 'CRYSTAL',    color: Color(0xFFAA88FF)),
+  elite(     minVolume: 700000,     label: 'ELITE',      color: Color(0xFF00FFC8)),
+  champion(  minVolume: 1200000,    label: 'CHAMPION',   color: Color(0xFFFF8C00)),
+  celestial( minVolume: 1900000,    label: 'CELESTIAL',  color: Color(0xFF00EAFF)),
+  titan(     minVolume: 2400000,    label: 'TITAN',      color: Color(0xFFFF3A5C));
 
   const MuscleTier({
     required this.minVolume,
@@ -135,7 +138,7 @@ enum MuscleTier {
     required this.color,
   });
 
-  final int minVolume; // volume cumulativo in kg (peso × reps)
+  final int minVolume;
   final String label;
   final Color color;
 
@@ -153,7 +156,6 @@ enum MuscleTier {
     return MuscleTier.values[i + 1];
   }
 
-  /// Progresso (0.0 → 1.0) verso il tier successivo.
   double progressFrom(int volume) {
     final n = next;
     if (n == null) return 1.0;

@@ -12,6 +12,7 @@ dependencies:
   cupertino_icons: ^1.0.8
   provider: ^6.1.2
   shared_preferences: ^2.2.3
+  flutter_svg: ^2.0.10
 
   # Notifiche con scheduling reale
   flutter_local_notifications: ^17.2.2
@@ -22,6 +23,13 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^4.0.0
+  flutter_launcher_icons: ^0.13.1
 
 flutter:
   uses-material-design: true
+
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "./assets/hunter_system_icon_1024.png" 
