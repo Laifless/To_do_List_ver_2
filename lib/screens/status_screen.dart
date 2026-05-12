@@ -5,6 +5,7 @@ import '../core/colors.dart';
 import '../models/hunter_rank.dart';
 import '../providers/system_provider.dart';
 import '../widgets/glow_box.dart';
+import '../widgets/muscle_graph.dart';
 
 class StatusScreen extends StatefulWidget {
   const StatusScreen({super.key});
@@ -22,9 +23,8 @@ class _StatusScreenState extends State<StatusScreen>
   void initState() {
     super.initState();
     _ctrl = AnimationController(
-      duration: const Duration(seconds: 3),
-      vsync: this,
-    )..repeat(reverse: true);
+        duration: const Duration(seconds: 3), vsync: this)
+      ..repeat(reverse: true);
     _glow = Tween<double>(begin: 0.4, end: 1.0)
         .animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
   }
@@ -38,13 +38,21 @@ class _StatusScreenState extends State<StatusScreen>
   @override
   Widget build(BuildContext context) {
     final prov = context.watch<SystemProvider>();
-    final lvl = prov.playerLevel;
-    final rank = prov.rank;
-    final totalQuests = prov.quests.length;
-    final completedQ = prov.completedQuestCount;
-    final gymSessions = prov.clearedDungeonCount;
-    final (xpInLevel, xpForLevel) =
-        LevelSystem.xpInCurrentLevel(prov.totalXp);
+
+    final allMuscles = {
+      'Petto', 'Spalle', 'Braccia', 'Addome', 'Quadricipiti',
+      'Polpacci', 'Schiena', 'Glutei', 'Femorali', 'Trapezi',
+      'Tricipiti', 'Core',
+    };
+    final muscleMap = {
+      for (final m in allMuscles) m: prov.tierForMuscle(m),
+    };
+
+    // Lista muscoli allenati, ordinata per volume decrescente
+    final trainedMuscles = prov.muscleVolume.entries
+        .where((e) => e.value > 0)
+        .toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
 
     return Scaffold(
       appBar: AppBar(
@@ -61,94 +69,46 @@ class _StatusScreenState extends State<StatusScreen>
         ),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            // Level + Rank display
-            AnimatedBuilder(
-              animation: _glow,
-              builder: (context, child) => GlowBox(
-                color: rank.color,
-                padding: const EdgeInsets.symmetric(vertical: 32),
-                glowIntensity: _glow.value,
-                child: Column(
-                  children: [
-                    Text(
-                      'HUNTER LEVEL',
-                      style: TextStyle(
-                        color: AppColors.alpha(rank.color, _glow.value),
-                        letterSpacing: 4,
-                        fontFamily: 'monospace',
-                        fontSize: 12,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      '$lvl',
-                      style: TextStyle(
-                        color: rank.color,
-                        fontSize: 72,
-                        fontFamily: 'monospace',
-                        fontWeight: FontWeight.bold,
-                        shadows: [
-                          Shadow(
-                            color:
-                                AppColors.alpha(rank.color, _glow.value),
-                            blurRadius: 30,
-                          ),
-                          Shadow(
-                            color: AppColors.alpha(
-                              rank.color,
-                              _glow.value * 0.5,
-                            ),
-                            blurRadius: 60,
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        border: Border.all(color: rank.color),
-                        color: AppColors.alpha(rank.color, 0.1),
-                      ),
-                      child: Text(
-                        'RANK ${rank.label}',
-                        style: TextStyle(
-                          color: rank.color,
-                          fontFamily: 'monospace',
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 4,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      rank.title,
-                      style: TextStyle(
-                        color: AppColors.alpha(Colors.grey, _glow.value),
-                        letterSpacing: 3,
-                        fontFamily: 'monospace',
-                        fontSize: 10,
-                      ),
-                    ),
-                  ],
+            // ── Due pannelli livello affiancati ──────────────────────────
+            Row(
+              children: [
+                Expanded(
+                  child: _LevelPanel(
+                    label: 'QUEST',
+                    icon: Icons.list_alt,
+                    level: prov.questLevel,
+                    rank: prov.questRank,
+                    progress: prov.questLevelProgress,
+                    xp: prov.questXp,
+                    glow: _glow,
+                  ),
                 ),
-              ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _LevelPanel(
+                    label: 'DUNGEON',
+                    icon: Icons.fitness_center,
+                    level: prov.dungeonLevel,
+                    rank: prov.dungeonRank,
+                    progress: prov.dungeonLevelProgress,
+                    xp: prov.dungeonXp,
+                    glow: _glow,
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 16),
-            // Stats grid
+
+            // ── Stats ────────────────────────────────────────────────────
             Row(
               children: [
                 Expanded(
                   child: _StatCard(
-                    label: 'VOLUME TOTALE',
-                    value: '${prov.totalVolume}kg',
+                    label: 'VOLUME',
+                    value: _fmtVol(prov.totalVolume),
                     color: AppColors.purple,
                     icon: Icons.fitness_center,
                   ),
@@ -156,90 +116,77 @@ class _StatusScreenState extends State<StatusScreen>
                 const SizedBox(width: 12),
                 Expanded(
                   child: _StatCard(
-                    label: 'DUNGEON CLEARED',
-                    value: '$gymSessions',
+                    label: 'DUNGEON',
+                    value: '${prov.clearedDungeonCount}',
                     color: AppColors.green,
                     icon: Icons.vpn_key,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: _StatCard(
-                    label: 'QUEST COMPLETE',
-                    value: '$completedQ',
-                    color: AppColors.gold,
-                    icon: Icons.check_circle_outline,
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: _StatCard(
-                    label: 'QUEST TOTALI',
-                    value: '$totalQuests',
-                    color: AppColors.blue,
-                    icon: Icons.list_alt,
+                    label: 'QUEST',
+                    value: '${prov.completedNonGymQuests}',
+                    color: AppColors.gold,
+                    icon: Icons.check_circle_outline,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 20),
-            // XP Bar verso prossimo livello
+            const SizedBox(height: 24),
+
+            // ── Muscle Graph ─────────────────────────────────────────────
             GlowBox(
               color: AppColors.blueDim,
               padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  const Row(
                     children: [
-                      const Text(
-                        'NEXT LEVEL',
-                        style: TextStyle(
-                          color: Colors.grey,
-                          fontFamily: 'monospace',
-                          fontSize: 10,
-                          letterSpacing: 2,
-                        ),
-                      ),
+                      Icon(Icons.accessibility_new,
+                          color: AppColors.blue, size: 16),
+                      SizedBox(width: 8),
                       Text(
-                        '$xpInLevel / $xpForLevel XP',
-                        style: const TextStyle(
+                        'MUSCLE MAP',
+                        style: TextStyle(
                           color: AppColors.blue,
                           fontFamily: 'monospace',
-                          fontSize: 11,
+                          fontSize: 12,
+                          letterSpacing: 3,
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 8),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(2),
-                    child: LinearProgressIndicator(
-                      value: prov.levelProgress,
-                      color: AppColors.blue,
-                      backgroundColor: AppColors.blueDim,
-                      minHeight: 6,
+                  const SizedBox(height: 4),
+                  const Text(
+                    'Tocca un muscolo per i dettagli',
+                    style: TextStyle(
+                      color: Colors.grey,
+                      fontFamily: 'monospace',
+                      fontSize: 10,
                     ),
+                  ),
+                  const SizedBox(height: 16),
+                  MuscleGraph(
+                    muscleMap: muscleMap,
+                    muscleVolume: prov.muscleVolume,
                   ),
                 ],
               ),
             ),
             const SizedBox(height: 16),
-            // Prossimo rank
-            if (rank.next != null)
+
+            // ── Tabella rank muscoli allenati ────────────────────────────
+            if (trainedMuscles.isNotEmpty)
               GlowBox(
-                color: AppColors.alpha(rank.next!.color, 0.5),
+                color: AppColors.blueDim,
                 padding: const EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      'NEXT RANK',
+                      'MUSCLE RANKS',
                       style: TextStyle(
                         color: Colors.grey,
                         fontFamily: 'monospace',
@@ -247,49 +194,14 @@ class _StatusScreenState extends State<StatusScreen>
                         letterSpacing: 2,
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            border: Border.all(color: rank.next!.color),
-                          ),
-                          child: Text(
-                            rank.next!.label,
-                            style: TextStyle(
-                              color: rank.next!.color,
-                              fontFamily: 'monospace',
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            rank.next!.title,
-                            style: TextStyle(
-                              color: rank.next!.color,
-                              fontFamily: 'monospace',
-                              fontSize: 12,
-                              letterSpacing: 1,
-                            ),
-                          ),
-                        ),
-                        Text(
-                          'LV. ${rank.next!.minLevel}',
-                          style: const TextStyle(
-                            color: Colors.grey,
-                            fontFamily: 'monospace',
-                            fontSize: 11,
-                          ),
-                        ),
-                      ],
-                    ),
+                    const SizedBox(height: 12),
+                    // Lista esplicita — niente cascade con .map()
+                    for (final entry in trainedMuscles)
+                      _MuscleRankRow(
+                        muscle: entry.key,
+                        volume: entry.value,
+                        tier: prov.tierForMuscle(entry.key),
+                      ),
                   ],
                 ),
               ),
@@ -298,7 +210,197 @@ class _StatusScreenState extends State<StatusScreen>
       ),
     );
   }
+
+  String _fmtVol(int v) =>
+      v >= 1000 ? '${(v / 1000).toStringAsFixed(1)}k kg' : '$v kg';
 }
+
+// ── Riga singola muscolo ───────────────────────────────────────────────────
+
+class _MuscleRankRow extends StatelessWidget {
+  final String muscle;
+  final int volume;
+  final MuscleTier tier;
+
+  const _MuscleRankRow({
+    required this.muscle,
+    required this.volume,
+    required this.tier,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final progress = tier.progressFrom(volume);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 90,
+            child: Text(
+              muscle,
+              style: const TextStyle(
+                color: Colors.white,
+                fontFamily: 'monospace',
+                fontSize: 11,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(2),
+              child: LinearProgressIndicator(
+                value: progress,
+                color: tier.color,
+                backgroundColor: AppColors.alpha(tier.color, 0.12),
+                minHeight: 4,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Container(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+              border: Border.all(color: AppColors.alpha(tier.color, 0.5)),
+              color: AppColors.alpha(tier.color, 0.08),
+            ),
+            child: Text(
+              tier.label,
+              style: TextStyle(
+                color: tier.color,
+                fontFamily: 'monospace',
+                fontSize: 9,
+                letterSpacing: 1,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Pannello livello ───────────────────────────────────────────────────────
+
+class _LevelPanel extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final int level;
+  final HunterRank rank;
+  final double progress;
+  final int xp;
+  final Animation<double> glow;
+
+  const _LevelPanel({
+    required this.label,
+    required this.icon,
+    required this.level,
+    required this.rank,
+    required this.progress,
+    required this.xp,
+    required this.glow,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: glow,
+      builder: (_, __) => GlowBox(
+        color: rank.color,
+        glowIntensity: glow.value,
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(icon, color: rank.color, size: 12),
+                const SizedBox(width: 5),
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: AppColors.alpha(rank.color, glow.value),
+                    fontFamily: 'monospace',
+                    fontSize: 10,
+                    letterSpacing: 2,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(
+              '$level',
+              style: TextStyle(
+                color: rank.color,
+                fontSize: 42,
+                fontFamily: 'monospace',
+                fontWeight: FontWeight.bold,
+                shadows: [
+                  Shadow(
+                    color: AppColors.alpha(rank.color, glow.value),
+                    blurRadius: 20,
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                border: Border.all(color: rank.color),
+                color: AppColors.alpha(rank.color, 0.1),
+              ),
+              child: Text(
+                rank.label,
+                style: TextStyle(
+                  color: rank.color,
+                  fontFamily: 'monospace',
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 3,
+                ),
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              rank.title,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: AppColors.alpha(Colors.grey, glow.value),
+                fontFamily: 'monospace',
+                fontSize: 8,
+                letterSpacing: 1,
+              ),
+            ),
+            const SizedBox(height: 8),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(2),
+              child: LinearProgressIndicator(
+                value: progress,
+                color: rank.color,
+                backgroundColor: AppColors.alpha(rank.color, 0.15),
+                minHeight: 3,
+              ),
+            ),
+            const SizedBox(height: 3),
+            Text(
+              '$xp XP',
+              style: const TextStyle(
+                color: Colors.grey,
+                fontFamily: 'monospace',
+                fontSize: 9,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Stat card ──────────────────────────────────────────────────────────────
 
 class _StatCard extends StatelessWidget {
   final String label;
@@ -315,45 +417,35 @@ class _StatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => GlowBox(
-    color: color,
-    padding: const EdgeInsets.all(16),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
+        color: color,
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(icon, color: color, size: 14),
-            const SizedBox(width: 6),
-            Expanded(
-              child: Text(
-                label,
-                style: TextStyle(
-                  color: color,
-                  fontFamily: 'monospace',
-                  fontSize: 9,
-                  letterSpacing: 1,
-                ),
+            Icon(icon, color: color, size: 13),
+            const SizedBox(height: 4),
+            Text(
+              value,
+              style: TextStyle(
+                color: Colors.white,
+                fontFamily: 'monospace',
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                shadows: [
+                  Shadow(color: AppColors.alpha(color, 0.5), blurRadius: 8),
+                ],
+              ),
+            ),
+            Text(
+              label,
+              style: TextStyle(
+                color: AppColors.alpha(color, 0.7),
+                fontFamily: 'monospace',
+                fontSize: 9,
+                letterSpacing: 1,
               ),
             ),
           ],
         ),
-        const SizedBox(height: 8),
-        Text(
-          value,
-          style: TextStyle(
-            color: Colors.white,
-            fontFamily: 'monospace',
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
-            shadows: [
-              Shadow(
-                color: AppColors.alpha(color, 0.5),
-                blurRadius: 10,
-              ),
-            ],
-          ),
-        ),
-      ],
-    ),
-  );
+      );
 }

@@ -5,33 +5,38 @@ import '../core/colors.dart';
 import '../core/haptics.dart';
 import '../models/hunter_rank.dart';
 
-/// Overlay full-screen che appare quando il player sale di livello.
-/// Animazione: schermo si scurisce → finestra blu pulsa in entrata →
-/// numero del livello si conta su → glow finale.
-///
-/// Uso: `LevelUpOverlay.show(context, newLevel: 5);`
 class LevelUpOverlay {
   LevelUpOverlay._();
 
   static Future<void> show(
     BuildContext context, {
     required int newLevel,
-    HunterRank? newRank, // se diverso dal precedente, mostra rank-up
+    required bool isDungeon,
+    HunterRank? newRank,
   }) async {
     SystemFeedback.levelUp();
     await showDialog<void>(
       context: context,
       barrierDismissible: true,
       barrierColor: AppColors.alpha(Colors.black, 0.85),
-      builder: (_) => _LevelUpDialog(level: newLevel, rank: newRank),
+      builder: (_) => _LevelUpDialog(
+        level: newLevel,
+        isDungeon: isDungeon,
+        rank: newRank,
+      ),
     );
   }
 }
 
 class _LevelUpDialog extends StatefulWidget {
   final int level;
+  final bool isDungeon;
   final HunterRank? rank;
-  const _LevelUpDialog({required this.level, this.rank});
+  const _LevelUpDialog({
+    required this.level,
+    required this.isDungeon,
+    this.rank,
+  });
 
   @override
   State<_LevelUpDialog> createState() => _LevelUpDialogState();
@@ -44,6 +49,10 @@ class _LevelUpDialogState extends State<_LevelUpDialog>
   late final Animation<double> _scale;
   late final Animation<double> _glow;
   late final Animation<double> _shimmer;
+
+  // Il colore della finestra cambia in base al tipo (quest = oro, dungeon = viola)
+  Color get _baseColor =>
+      widget.isDungeon ? AppColors.purple : AppColors.gold;
 
   @override
   void initState() {
@@ -88,7 +97,7 @@ class _LevelUpDialogState extends State<_LevelUpDialog>
     return Center(
       child: AnimatedBuilder(
         animation: Listenable.merge([_entryCtrl, _pulseCtrl]),
-        builder: (context, _) => Transform.scale(
+        builder: (_, __) => Transform.scale(
           scale: _scale.value,
           child: GestureDetector(
             onTap: () => Navigator.of(context).pop(),
@@ -96,15 +105,15 @@ class _LevelUpDialogState extends State<_LevelUpDialog>
               constraints: const BoxConstraints(maxWidth: 340),
               decoration: BoxDecoration(
                 color: AppColors.black,
-                border: Border.all(color: AppColors.blue, width: 2),
+                border: Border.all(color: _baseColor, width: 2),
                 boxShadow: [
                   BoxShadow(
-                    color: AppColors.alpha(AppColors.blue, _glow.value * 0.7),
+                    color: AppColors.alpha(_baseColor, _glow.value * 0.7),
                     blurRadius: 50,
                     spreadRadius: 4,
                   ),
                   BoxShadow(
-                    color: AppColors.alpha(AppColors.blue, _glow.value * 0.3),
+                    color: AppColors.alpha(_baseColor, _glow.value * 0.3),
                     blurRadius: 100,
                     spreadRadius: 10,
                   ),
@@ -112,7 +121,7 @@ class _LevelUpDialogState extends State<_LevelUpDialog>
               ),
               child: Stack(
                 children: [
-                  // Shimmer diagonale che scorre una volta
+                  // Shimmer diagonale
                   Positioned.fill(
                     child: ClipRect(
                       child: Transform.translate(
@@ -121,13 +130,11 @@ class _LevelUpDialogState extends State<_LevelUpDialog>
                           angle: -math.pi / 6,
                           child: Container(
                             decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [
-                                  Colors.transparent,
-                                  AppColors.alpha(AppColors.blue, 0.15),
-                                  Colors.transparent,
-                                ],
-                              ),
+                              gradient: LinearGradient(colors: [
+                                Colors.transparent,
+                                AppColors.alpha(_baseColor, 0.15),
+                                Colors.transparent,
+                              ]),
                             ),
                           ),
                         ),
@@ -136,59 +143,52 @@ class _LevelUpDialogState extends State<_LevelUpDialog>
                   ),
                   Padding(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 32,
-                      vertical: 36,
-                    ),
+                        horizontal: 32, vertical: 36),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        // Header
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.warning_amber_rounded,
-                              color: AppColors.alpha(
-                                AppColors.blue,
-                                _glow.value,
-                              ),
-                              size: 18,
+                        // Label tipo
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 3),
+                          decoration: BoxDecoration(
+                            border: Border.all(
+                                color: AppColors.alpha(_baseColor, 0.5)),
+                            color: AppColors.alpha(_baseColor, 0.08),
+                          ),
+                          child: Text(
+                            widget.isDungeon
+                                ? '⚔ DUNGEON LEVEL UP'
+                                : '📋 QUEST LEVEL UP',
+                            style: TextStyle(
+                              color: AppColors.alpha(_baseColor, _glow.value),
+                              fontFamily: 'monospace',
+                              letterSpacing: 3,
+                              fontSize: 10,
                             ),
-                            const SizedBox(width: 8),
-                            Text(
-                              'NOTIFICATION',
-                              style: TextStyle(
-                                color: AppColors.alpha(
-                                  AppColors.blue,
-                                  _glow.value,
-                                ),
-                                fontFamily: 'monospace',
-                                letterSpacing: 4,
-                                fontSize: 11,
-                              ),
-                            ),
-                          ],
+                          ),
                         ),
-                        const SizedBox(height: 28),
+                        const SizedBox(height: 20),
                         const Text(
                           'You have leveled up.',
                           style: TextStyle(
                             color: Colors.white,
                             fontFamily: 'monospace',
-                            fontSize: 16,
+                            fontSize: 15,
                             letterSpacing: 1,
                           ),
                         ),
-                        const SizedBox(height: 12),
-                        // Number countup
+                        const SizedBox(height: 10),
+                        // Numero che si conta su
                         TweenAnimationBuilder<double>(
                           duration: const Duration(milliseconds: 900),
-                          tween: Tween(begin: 0, end: widget.level.toDouble()),
+                          tween: Tween(
+                              begin: 0, end: widget.level.toDouble()),
                           curve: Curves.easeOutCubic,
                           builder: (_, value, __) => Text(
                             'LV. ${value.toInt()}',
                             style: TextStyle(
-                              color: AppColors.blue,
+                              color: _baseColor,
                               fontFamily: 'monospace',
                               fontSize: 56,
                               fontWeight: FontWeight.bold,
@@ -196,32 +196,29 @@ class _LevelUpDialogState extends State<_LevelUpDialog>
                               shadows: [
                                 Shadow(
                                   color: AppColors.alpha(
-                                    AppColors.blue,
-                                    _glow.value,
-                                  ),
+                                      _baseColor, _glow.value),
                                   blurRadius: 30,
                                 ),
                                 Shadow(
                                   color: AppColors.alpha(
-                                    AppColors.blue,
-                                    _glow.value * 0.5,
-                                  ),
+                                      _baseColor, _glow.value * 0.5),
                                   blurRadius: 60,
                                 ),
                               ],
                             ),
                           ),
                         ),
+                        // Rank up se presente
                         if (widget.rank != null) ...[
                           const SizedBox(height: 20),
                           Container(
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 8,
-                            ),
+                                horizontal: 16, vertical: 8),
                             decoration: BoxDecoration(
-                              border: Border.all(color: widget.rank!.color),
-                              color: AppColors.alpha(widget.rank!.color, 0.1),
+                              border:
+                                  Border.all(color: widget.rank!.color),
+                              color: AppColors.alpha(
+                                  widget.rank!.color, 0.1),
                             ),
                             child: Column(
                               children: [
@@ -239,9 +236,7 @@ class _LevelUpDialogState extends State<_LevelUpDialog>
                                   widget.rank!.title,
                                   style: TextStyle(
                                     color: AppColors.alpha(
-                                      widget.rank!.color,
-                                      0.7,
-                                    ),
+                                        widget.rank!.color, 0.7),
                                     fontFamily: 'monospace',
                                     fontSize: 10,
                                     letterSpacing: 2,
@@ -255,7 +250,8 @@ class _LevelUpDialogState extends State<_LevelUpDialog>
                         Text(
                           '[ TAP TO CLOSE ]',
                           style: TextStyle(
-                            color: AppColors.alpha(Colors.grey, _glow.value),
+                            color: AppColors.alpha(
+                                Colors.grey, _glow.value),
                             fontFamily: 'monospace',
                             fontSize: 10,
                             letterSpacing: 2,
