@@ -25,46 +25,30 @@ class MainScaffold extends StatefulWidget {
 
 class _MainScaffoldState extends State<MainScaffold> {
   int _index = 0;
-  StreamSubscription<({int level, bool isDungeon})>? _levelUpSub;
-
-  // Rank separati per i due sistemi
-  HunterRank? _lastQuestRank;
-  HunterRank? _lastDungeonRank;
+  StreamSubscription<int>? _levelUpSub;
+  HunterRank? _lastRank;
 
   @override
   void initState() {
     super.initState();
+    // MainScaffold viene costruito SOLO dopo che AppRoot ha verificato
+    // isLoading == false, quindi qui il provider è già pronto.
     final prov = context.read<SystemProvider>();
-    _lastQuestRank   = prov.questRank;
-    _lastDungeonRank = prov.dungeonRank;
+    _lastRank = prov.rank;
     _levelUpSub = prov.levelUpEvents.listen(_handleLevelUp);
   }
 
-  void _handleLevelUp(({int level, bool isDungeon}) event) {
+  void _handleLevelUp(int newLevel) {
     if (!mounted) return;
     final prov = context.read<SystemProvider>();
-
-    if (event.isDungeon) {
-      final newRank    = prov.dungeonRank;
-      final rankChanged = newRank != _lastDungeonRank;
-      _lastDungeonRank = newRank;
-      LevelUpOverlay.show(
-        context,
-        newLevel: event.level,
-        isDungeon: true,
-        newRank: rankChanged ? newRank : null,
-      );
-    } else {
-      final newRank    = prov.questRank;
-      final rankChanged = newRank != _lastQuestRank;
-      _lastQuestRank = newRank;
-      LevelUpOverlay.show(
-        context,
-        newLevel: event.level,
-        isDungeon: false,
-        newRank: rankChanged ? newRank : null,
-      );
-    }
+    final newRank = prov.rank;
+    final rankChanged = newRank != _lastRank;
+    _lastRank = newRank;
+    LevelUpOverlay.show(
+      context,
+      newLevel: newLevel,
+      newRank: rankChanged ? newRank : null,
+    );
   }
 
   @override
@@ -86,7 +70,9 @@ class _MainScaffoldState extends State<MainScaffold> {
       ),
       bottomNavigationBar: Container(
         decoration: const BoxDecoration(
-          border: Border(top: BorderSide(color: AppColors.blueDim, width: 1)),
+          border: Border(
+            top: BorderSide(color: AppColors.blueDim, width: 1),
+          ),
         ),
         child: BottomNavigationBar(
           backgroundColor: AppColors.surfaceAlt,
@@ -98,9 +84,14 @@ class _MainScaffoldState extends State<MainScaffold> {
             setState(() => _index = i);
           },
           selectedLabelStyle: const TextStyle(
-              fontFamily: 'monospace', fontSize: 10, letterSpacing: 1),
-          unselectedLabelStyle:
-              const TextStyle(fontFamily: 'monospace', fontSize: 10),
+            fontFamily: 'monospace',
+            fontSize: 10,
+            letterSpacing: 1,
+          ),
+          unselectedLabelStyle: const TextStyle(
+            fontFamily: 'monospace',
+            fontSize: 10,
+          ),
           items: const [
             BottomNavigationBarItem(
               icon: Icon(Icons.list_alt_outlined),
@@ -132,7 +123,8 @@ class _MainScaffoldState extends State<MainScaffold> {
       context: context,
       backgroundColor: AppColors.surface,
       shape: const RoundedRectangleBorder(
-          side: BorderSide(color: AppColors.blueDim)),
+        side: BorderSide(color: AppColors.blueDim),
+      ),
       builder: (_) => Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
@@ -167,7 +159,9 @@ class _MainScaffoldState extends State<MainScaffold> {
                   onTap: () {
                     Navigator.pop(context);
                     Navigator.push(
-                        context, slideRoute(const DungeonMakerScreen()));
+                      context,
+                      slideRoute(const DungeonMakerScreen()),
+                    );
                   },
                 ),
                 _TypeButton(
@@ -215,8 +209,9 @@ class _MainScaffoldState extends State<MainScaffold> {
                 controller: ctrl,
                 style: const TextStyle(color: Colors.white),
                 autofocus: true,
-                decoration:
-                    const InputDecoration(hintText: "Descrivi l'obiettivo..."),
+                decoration: const InputDecoration(
+                  hintText: "Descrivi l'obiettivo...",
+                ),
               ),
               const SizedBox(height: 20),
               GestureDetector(
@@ -228,14 +223,23 @@ class _MainScaffoldState extends State<MainScaffold> {
                   if (t != null) {
                     final now = DateTime.now();
                     var dt = DateTime(
-                        now.year, now.month, now.day, t.hour, t.minute);
-                    if (dt.isBefore(now)) dt = dt.add(const Duration(days: 1));
+                      now.year,
+                      now.month,
+                      now.day,
+                      t.hour,
+                      t.minute,
+                    );
+                    if (dt.isBefore(now)) {
+                      dt = dt.add(const Duration(days: 1));
+                    }
                     setDialogState(() => reminderTime = dt);
                   }
                 },
                 child: Container(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 12, vertical: 10),
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
                   decoration: BoxDecoration(
                     border: Border.all(
                       color: reminderTime != null ? color : AppColors.blueDim,
@@ -246,9 +250,11 @@ class _MainScaffoldState extends State<MainScaffold> {
                   ),
                   child: Row(
                     children: [
-                      Icon(Icons.notifications_outlined,
-                          color: reminderTime != null ? color : Colors.grey,
-                          size: 16),
+                      Icon(
+                        Icons.notifications_outlined,
+                        color: reminderTime != null ? color : Colors.grey,
+                        size: 16,
+                      ),
                       const SizedBox(width: 8),
                       Text(
                         reminderTime != null
@@ -269,8 +275,10 @@ class _MainScaffoldState extends State<MainScaffold> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(dialogCtx),
-              child: const Text('CANCEL',
-                  style: TextStyle(color: Colors.grey)),
+              child: const Text(
+                'CANCEL',
+                style: TextStyle(color: Colors.grey),
+              ),
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
@@ -294,9 +302,10 @@ class _MainScaffoldState extends State<MainScaffold> {
               child: const Text(
                 'ACCEPT',
                 style: TextStyle(
-                    color: Colors.black,
-                    fontWeight: FontWeight.bold,
-                    fontFamily: 'monospace'),
+                  color: Colors.black,
+                  fontWeight: FontWeight.bold,
+                  fontFamily: 'monospace',
+                ),
               ),
             ),
           ],
@@ -324,33 +333,35 @@ class _TypeButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => GestureDetector(
-        onTap: onTap,
-        child: Column(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(18),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(color: color, width: 2),
-                color: AppColors.alpha(color, 0.08),
-                boxShadow: [
-                  BoxShadow(
-                      color: AppColors.alpha(color, 0.3), blurRadius: 15),
-                ],
+    onTap: onTap,
+    child: Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(color: color, width: 2),
+            color: AppColors.alpha(color, 0.08),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.alpha(color, 0.3),
+                blurRadius: 15,
               ),
-              child: Icon(icon, color: color, size: 26),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              label,
-              style: TextStyle(
-                color: color,
-                fontSize: 10,
-                letterSpacing: 2,
-                fontFamily: 'monospace',
-              ),
-            ),
-          ],
+            ],
+          ),
+          child: Icon(icon, color: color, size: 26),
         ),
-      );
+        const SizedBox(height: 8),
+        Text(
+          label,
+          style: TextStyle(
+            color: color,
+            fontSize: 10,
+            letterSpacing: 2,
+            fontFamily: 'monospace',
+          ),
+        ),
+      ],
+    ),
+  );
 }
